@@ -1,0 +1,66 @@
+#! /usr/bin/ruby
+
+# December 6, 2013
+
+require 'optparse'
+
+options = {}
+
+executable_name = File.basename($PROGRAM_NAME)
+
+optparse = OptionParser.new do |opts|
+  opts.banner = "Usage: #{executable_name} [options] search_string data_filename"
+ 
+# Set a variable
+  options[:list] = false
+  opts.on( '-l', '--list', 'List all specified blocks' ) do
+    options[:list] = true
+  end
+   
+# Perform an action immediately
+  opts.on( '-h', '--help', 'Display this screen' ) do
+	puts opts
+	exit
+  end
+
+end
+
+optparse.parse!
+
+def get_for_onetep_input
+	possible_input_files = Dir.entries('.').select{ |filename| filename =~ /\.dat$/ }
+	abort( "no .dat input files found in this directory" ) if possible_input_files.empty?
+	abort( "multiple possible input files found:\n#{possible_input_files}" ) if possible_input_files.length > 1
+	return possible_input_files[0]
+end
+
+def get_block_in_file( block_search_term, input_filename )
+	data_file = File.new( input_filename, 'r' ).readlines
+
+	block_re = /\%block\s+/
+	endblock_re = /\%endblock\s+/
+	end_of_string_re = /\s*$/
+
+	output = false
+	start_of_block_re = Regexp.new( block_re.to_s + block_search_term + end_of_string_re.to_s, Regexp::IGNORECASE )
+	end_of_block_re   = Regexp.new( endblock_re.to_s + block_search_term + end_of_string_re.to_s, Regexp::IGNORECASE)
+
+	data_file.each do |line|
+		output = true if line =~ start_of_block_re
+		puts line if output
+		output = false if line =~ end_of_block_re
+	end
+end
+
+def get_all_blocks_in_file( input_filename )
+	puts File.new( input_filename, 'r' ).readlines.select{ |line| line =~ /\%block\s+/ }
+end
+
+block_search_term = ARGV[0]
+input_filename = ARGV[1] ||= get_for_onetep_input
+if options[:list] or block_search_term.nil? then
+	get_all_blocks_in_file( input_filename ) 
+	exit
+end
+# abort( optparse.banner ) if block_search_term.nil?
+get_block_in_file( block_search_term, input_filename )
